@@ -10,7 +10,7 @@ never_update=False
 # forked from Joric's pywallet.py
 #
 
-
+from time import sleep
 import sys
 PY3 = sys.version_info.major > 2
 
@@ -62,7 +62,10 @@ import types
 import string
 import hashlib
 import random
-import urllib
+try:
+	from urllib import urlopen
+except:
+	from urllib.request import urlopen
 import math
 import base64
 import collections
@@ -88,6 +91,7 @@ def chrsix(x):
 
 def str_to_bytes(k):
 	if k.__class__ == str and not hasattr(k, 'decode'):
+		k = k.trim()
 		return bytes(k, 'ascii')
 	return k
 def bytes_to_str(k):
@@ -1458,7 +1462,7 @@ def ASecretToSecret(sec):
 	if not vch:
 		return False
 	if ordsix(vch[0]) != network.wif_prefix:
-		print('Warning: adress prefix seems bad (%d vs %d)'%(ordsix(vch[0]), network.wif_prefix))
+		warnings.warn('Warning: adress prefix seems bad (%d vs %d)'%(ordsix(vch[0]), network.wif_prefix))
 	return vch[1:]
 
 def regenerate_key(sec):
@@ -1550,8 +1554,8 @@ def search_patterns_on_disk(device, size, inc, patternlist):   # inc must be hig
 	try:
 		fd = os.open(device, otype)
 	except Exception as e:
-		print("Can't open %s, check the path or try as root"%device)
-		print("  Error: "+str(e.args))
+		warnings.warn("Can't open %s, check the path or try as root"%device)
+		warnings.warn("  Error: "+str(e.args))
 		exit(0)
 
 	i = 0
@@ -1579,7 +1583,7 @@ def search_patterns_on_disk(device, size, inc, patternlist):   # inc must be hig
 			if lendataloaded%512>0:
 				raise Exception("SPOD error 1: %d, %d"%(lendataloaded, i-len(datakept)))
 			os.lseek(fd, lendataloaded, os.SEEK_CUR)
-			print(str(exc))
+			warnings.warn(str(exc))
 			i += lendataloaded
 			continue
 	os.close(fd)
@@ -1708,7 +1712,7 @@ def recov(device, passes, size=102400, inc=10240, outputdir='.'):
 	}
 
 
-	if not device.startswith('PartialRecoveryFile:'):
+	if not device.startswith(b'PartialRecoveryFile:'):
 		r=search_patterns_on_disk(device, size, inc, nameToDBName.values())
 		f=open(outputdir+'/pywallet_partial_recovery_%d.json'%ts(), 'w')
 		f.write(json.dumps(r))
@@ -1785,7 +1789,7 @@ def recov(device, passes, size=102400, inc=10240, outputdir='.'):
 	tzero=time.time()
 	if len(passes)==0:
 		if len(ckeys)>0:
-			print("Can't decrypt them as you didn't provide any passphrase.")
+			warnings.warn("Can't decrypt them as you didn't provide any passphrase.")
 	else:
 		for mko,mk in mkeys:
 			list_of_possible_keys=list_of_possible_keys_per_master_key[mk]
@@ -1798,7 +1802,7 @@ def recov(device, passes, size=102400, inc=10240, outputdir='.'):
 #				print("SKFP params:", pp, mk.salt, mk.iterations, mk.method)
 				res = crypter.SetKeyFromPassphrase(pp, mk.salt, mk.iterations, mk.method)
 				if res == 0:
-					print("Unsupported derivation method")
+					warnings.warn("Unsupported derivation method")
 					sys.exit(1)
 				masterkey = crypter.Decrypt(mk.encrypted_key)
 				crypter.SetKey(masterkey)
@@ -1837,8 +1841,8 @@ def recov(device, passes, size=102400, inc=10240, outputdir='.'):
 			print("All the found encrypted private keys have been decrypted.")
 			return map(lambda x:x[1].privkey, ckeys)
 		else:
-			print("Private keys not decrypted: %d"%len(ckeys_not_decrypted))
-			print("Trying all the remaining possibilities (%d) might take up to %d minutes."%(len(ckeys_not_decrypted)*len(passes)*len(mkeys),int(len(ckeys_not_decrypted)*len(passes)*len(mkeys)//calcspeed)))
+			warnings.warn("Private keys not decrypted: %d"%len(ckeys_not_decrypted))
+			warnings.warn("Trying all the remaining possibilities (%d) might take up to %d minutes."%(len(ckeys_not_decrypted)*len(passes)*len(mkeys),int(len(ckeys_not_decrypted)*len(passes)*len(mkeys)//calcspeed)))
 			cont=raw_input("Do you want to test them? (y/n): ")
 			while len(cont)==0:
 				cont=raw_input("Do you want to test them? (y/n): ")
@@ -1874,8 +1878,8 @@ def recov(device, passes, size=102400, inc=10240, outputdir='.'):
 		if len(ckeys_not_decrypted)==0:
 			print("All the found encrypted private keys have been finally decrypted.")
 		elif not refused_to_test_all_pps:
-			print("Private keys not decrypted: %d"%len(ckeys_not_decrypted))
-			print("Try another password, check the size of your partition or seek help")
+			warnings.warn("Private keys not decrypted: %d"%len(ckeys_not_decrypted))
+			warnings.warn("Try another password, check the size of your partition or seek help")
 
 
 	uncrypted_ckeys=filter(lambda x:x!=None, map(lambda x:x[1].privkey, ckeys))
@@ -1906,7 +1910,7 @@ def first_read(device, size, prekeys, inc=10000):
 	try:
 		fd = os.open (device, os.O_RDONLY)
 	except:
-		print("Can't open %s, check the path or try as root"%device)
+		warnings.warn("Can't open %s, check the path or try as root"%device)
 		exit(0)
 	prekey = prekeys[0]
 	data = b""
@@ -2047,7 +2051,7 @@ def md5_file(nf):
 		return 'zz'
 
 def md5_onlinefile(add):
-	page = urllib.urlopen(add).read()
+	page = urlopen(add).read()
 	return md5_2(page)
 
 
@@ -2334,9 +2338,9 @@ def parse_wallet(db, item_callback):
 				d['nTime'] = vds.read_int64()
 				d['otherAccount'] = vds.read_string()
 				d['comment'] = vds.read_string()
-			# elif type == b"bestblock":
-			# 	d['nVersion'] = vds.read_int32()
-			# 	d.update(parse_BlockLocator(vds))
+			elif type == b"bestblock":
+				d['nVersion'] = vds.read_int32()
+				d.update(parse_BlockLocator(vds))
 			elif type == b"ckey":
 				d['public_key'] = kds.read_bytes(kds.read_compact_size())
 				d['encrypted_private_key'] = vds.read_bytes(vds.read_compact_size())
@@ -2586,11 +2590,11 @@ def update_wallet(db, types, datas, paramsAreLists=False):
 				vds.write_int64(d['nTime'])
 				vds.write_string(d['otherAccount'])
 				vds.write_string(d['comment'])
-			# elif type == b"bestblock":
-			# 	vds.write_int32(d['nVersion'])
-			# 	vds.write_compact_size(len(d['hashes']))
-			# 	for h in d['hashes']:
-			# 		vds.write(h)
+			elif type == b"bestblock":
+				vds.write_int32(d['nVersion'])
+				vds.write_compact_size(len(d['hashes']))
+				for h in d['hashes']:
+					vds.write(h)
 			elif type == b"ckey":
 				kds.write_string(d['public_key'])
 				vds.write_string(d['encrypted_private_key'])
@@ -2686,7 +2690,7 @@ def read_wallet(json_db, db_env, walletfile, print_wallet, print_wallet_transact
 			json_db['minversion'] = d['minversion']
 
 		elif type == b"setting":
-			if not json_db.has_key('settings'):
+			if not 'settings' in json_db:
 				json_db['settings'] = Bdict({})
 			json_db["settings"][d['setting']] = d['value']
 
@@ -2703,7 +2707,7 @@ def read_wallet(json_db, db_env, walletfile, print_wallet, print_wallet_transact
 			json_db['keys'].append({'addr' : addr, 'sec' : sec, 'hexsec' : hexsec, 'secret' : hexsec, 'pubkey':binascii.hexlify(d['public_key']), 'compressed':compressed, 'private':binascii.hexlify(d['private_key'])})
 
 		elif type == b"wkey":
-			if not json_db.has_key('wkey'): json_db['wkey'] = []
+			if not 'wkey' in json_db: json_db['wkey'] = []
 			json_db['wkey']['created'] = d['created']
 
 		elif type == b"pool":
@@ -2763,7 +2767,7 @@ def read_wallet(json_db, db_env, walletfile, print_wallet, print_wallet_transact
 		addr = k['addr']
 		if include_balance:
 #			print("%3d/%d  %s  %s" % (i, nkeys, k["addr"], k["balance"]))
-			k["balance"] = balance(balance_site, k["addr"])
+			k["balance"] = balance(k["addr"])
 #			print("  %s" % (i, nkeys, k["addr"], k["balance"]))
 
 		if addr in json_db['names'].keys():
@@ -2973,13 +2977,17 @@ def importprivkey(db, sec, label, reserve, verbose=True):
 
 	return True
 
-def balance(site, address):
-	page=urllib.urlopen("%s%s" % (site, address))
-	query_result=page.read()
+def balance(address):
+	try:
+		page=urlopen("%s%s" % (balance_site, address))
+		query_result=page.read()
+	except:
+		query_result = "error: no response"
 	#If the initial API call returned an error, use a secondary API
-	if query_result.startswith("error"):
-		page = urllib.urlopen("%s%s" % (backup_balance_site, address))
+	if str(query_result).startswith("error"):
+		page = urlopen("%s%s" % (backup_balance_site, address))
 		query_result = json.loads(page.read())["balance"]
+	sleep(10)
 	return query_result
 
 def read_jsonfile(filename):
@@ -3216,7 +3224,7 @@ def bc_address_to_available_tx(address, testnet=False):
 	balance = 0
 	txin_is_used = Bdict({})
 
-	page = urllib.urlopen("%s/%s" % (blockexplorer_url, address))
+	page = urlopen("%s/%s" % (blockexplorer_url, address))
 	try:
 		table = page.read().split('<table class="txtable">')[1]
 		table = table.split("</table>")[0]
@@ -3255,7 +3263,7 @@ def bc_address_to_available_tx(address, testnet=False):
 
 
 	for tx in txout:
-		pagetx = urllib.urlopen("http://blockexplorer.com/"+TN+"/tx/"+tx[0])
+		pagetx = urlopen("http://blockexplorer.com/"+TN+"/tx/"+tx[0])
 		table_in = pagetx.read().split('<a name="outputs">Outputs</a>')[0].split('<table class="txtable">')[1].split("</table>")[0]
 
 		cell = read_blockexplorer_table(table_in)
@@ -3384,7 +3392,7 @@ class tx():
 
 def update_pyw():
 	if md5_last_pywallet[0] and md5_last_pywallet[1] not in md5_pywallet:
-		dl=urllib.urlopen('https://raw.github.com/jackjack-jj/pywallet/master/pywallet.py').read()
+		dl=urlopen('https://raw.github.com/jackjack-jj/pywallet/master/pywallet.py').read()
 		if len(dl)>40 and md5_2(dl)==md5_last_pywallet[1]:
 			filout = open(pyw_path+"/"+pyw_filename, 'w')
 			filout.write(dl)
@@ -3490,7 +3498,7 @@ def whitepaper():
 	try:
 		rawtx = subprocess.check_output(["bitcoin-cli", "getrawtransaction", "54e48e5f5c656b26c3bca14a8c95aa583d07ebe84dde3b7dd4a78f4e4186e713"])
 	except:
-		rawtx = urllib.urlopen("https://blockchain.info/tx/54e48e5f5c656b26c3bca14a8c95aa583d07ebe84dde3b7dd4a78f4e4186e713?format=hex").read()
+		rawtx = urlopen("https://blockchain.info/tx/54e48e5f5c656b26c3bca14a8c95aa583d07ebe84dde3b7dd4a78f4e4186e713?format=hex").read()
 	outputs = rawtx.split("0100000000000000")
 	pdf = b""
 	for output in outputs[1:-2]:
@@ -3666,7 +3674,7 @@ class Mnemonic(object):
         if prefix in self.wordlist:
             return prefix
         else:
-            matches = [word for word in self.wordlist if word.startswith(prefix)]
+            matches = [word for word in self.wordlist if word.startswith(bytes(prefix))]
             if len(matches) == 1:  # matched exactly one word in the wordlist
                 return matches[0]
             else:
@@ -3687,8 +3695,8 @@ class Mnemonic(object):
 
     @classmethod
     def mnemonic_to_xprv(cls, mnemonic, passphrase = ""):
-    	seed = cls.to_seed(mnemonic, passphrase)
-    	return Xpriv.from_seed(seed)
+        seed = cls.to_seed(mnemonic, passphrase)
+        return Xpriv.from_seed(seed)
 
     @staticmethod
     def to_hd_master_key(seed, testnet = False):
@@ -3870,6 +3878,12 @@ class TestPywallet(unittest.TestCase):
 
 	def test_btc_key_recovery(self):
 		pass
+
+def encode(obj):
+    if type(obj) is bytes:
+        return obj.decode('utf-8')
+    return json.JSONEncoder.default(None, obj)
+
 
 if __name__ == '__main__':
 	parser = OptionParser(usage="%prog [options]", version="%prog 1.1")
@@ -4102,7 +4116,7 @@ if __name__ == '__main__':
 		db_dir, wallet_name = os.path.split(os.path.realpath(options.walletfile))
 
 	if not(options.key_balance is None):
-		print(balance(balance_site, options.key_balance))
+		print(balance(options.key_balance))
 		exit(0)
 
 	network = network_bitcoin
@@ -4114,7 +4128,7 @@ if __name__ == '__main__':
 				print("Some network info is missing: please use the complete network format")
 		except:
 			network_info = options.otherversion.split(',')
-			parse_int=lambda x:int(x, 16) if x.startswith('0x') else int(x)
+			parse_int=lambda x:int(x, 16) if x.startswith(b'0x') else int(x)
 			network = Network(network_info[0], parse_int(network_info[1]), parse_int(network_info[2]), parse_int(network_info[3]), network_info[4])
 	if options.namecoin:
 		network = Network('Namecoin', 52, 13, 180, 'nc')
@@ -4209,14 +4223,15 @@ if __name__ == '__main__':
 
 	if options.find_address:
 		addr_data = filter(lambda x:x["addr"] == options.find_address, json_db["keys"]+json_db["pool"])
-		print(json.dumps(list(addr_data), sort_keys=True, indent=4))
+		print(json.dumps(list(addr_data), sort_keys=True, indent=4, default=encode))
 		exit()
 
 	if options.dump:
 		if options.dumpformat == 'addr':
 			addrs = list(map(lambda x:x["addr"], json_db["keys"]+json_db["pool"]))
 			json_db = addrs
-		wallet = json.dumps(json_db, sort_keys=True, indent=4)
+		print([ a for a in json_db["keys"] if a.get("private")])
+		wallet = json.dumps(json_db, sort_keys=True, indent=4, default=encode)
 		print(wallet)
 		exit()
 	elif options.key:
