@@ -2769,6 +2769,8 @@ def read_wallet(json_db, db_env, walletfile, print_wallet, print_wallet_transact
 #			print("%3d/%d  %s  %s" % (i, nkeys, k["addr"], k["balance"]))
 			k["balance"] = balance(k["addr"])
 #			print("  %s" % (i, nkeys, k["addr"], k["balance"]))
+			if k["balance"] == 0 and options.ignore_empty:
+				del(json_db['keys'][addr])
 
 		if addr in json_db['names'].keys():
 			k["label"] = json_db['names'][addr]
@@ -3908,6 +3910,9 @@ if __name__ == '__main__':
 
 	parser.add_option("--dumpwithbalance", dest="dumpbalance", action="store_true",
 		help="includes balance of each address in the json dump, takes about 2 minutes per 100 addresses")
+
+	parser.add_option("--ignore_empty", dest="ignore_empty", action="store_true",
+		help="filter addreses with no balance, use with --dumpwallet and --dumpwithbalance")
 
 	parser.add_option("--importprivkey", dest="key",
 		help="import private key from vanitygen")
