@@ -3932,6 +3932,9 @@ if __name__ == '__main__':
 	parser.add_option("--namecoin", dest="namecoin", action="store_true",
 		help="use namecoin address type")
 
+	parser.add_option("--litecoin", dest="litecoin", action="store_true",
+		help="use litecoin address type")
+
 	parser.add_option("--eth", dest="ethereum", action="store_true",
 		help="use ethereum address type")
 
@@ -4132,6 +4135,10 @@ if __name__ == '__main__':
 			network = Network(network_info[0], parse_int(network_info[1]), parse_int(network_info[2]), parse_int(network_info[3]), network_info[4])
 	if options.namecoin:
 		network = Network('Namecoin', 52, 13, 180, 'nc')
+	if options.litecoin:
+		network = Network('Litecoin', 48, 50, 0x36, 'ltc')
+		balance_site = 'https://error.error/'
+		backup_balance_site ='https://api.blockcypher.com/v1/ltc/main/addrs/'
 	elif options.testnet:
 		db_dir += "/testnet3"
 		network = network_bitcoin_testnet3
