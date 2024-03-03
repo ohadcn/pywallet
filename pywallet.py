@@ -96,7 +96,10 @@ def str_to_bytes(k):
 	return k
 def bytes_to_str(k):
 	if k.__class__ == bytes:
-		return k.decode()
+		try:
+			return k.decode()
+		except:
+			return k
 	if k.__class__ == unicode:
 		return bytes_to_str(k.encode())
 	return k
@@ -109,7 +112,7 @@ class Bdict(dict):
 			except:pass
 			self[bytes_to_str(k)] = v
 	def update(self, *a, **kw):
-		other = self.__class__(*a, **kw)
+		other = self.__class__(**kw)
 		return super(Bdict, self).update(other)
 	def pop(self, k, *a):
 		return super(Bdict, self).pop(bytes_to_str(k), *a)
@@ -2979,7 +2982,7 @@ def importprivkey(db, sec, label, reserve, verbose=True):
 
 	return True
 
-def balance(address):
+def balance(address, retry = 3):
 	try:
 		page=urlopen("%s%s" % (balance_site, address))
 		query_result=page.read()
@@ -2987,8 +2990,13 @@ def balance(address):
 		query_result = "error: no response"
 	#If the initial API call returned an error, use a secondary API
 	if str(query_result).startswith("error"):
-		page = urlopen("%s%s" % (backup_balance_site, address))
-		query_result = json.loads(page.read())["balance"]
+		try:
+			page = urlopen("%s%s" % (backup_balance_site, address))
+			query_result = json.loads(page.read())["balance"]
+		except HTTPError as e:
+			if retry > 0:
+				sleep(10)
+				return balance(address, retry - 1)
 	sleep(10)
 	return query_result
 
@@ -3884,7 +3892,7 @@ class TestPywallet(unittest.TestCase):
 def encode(obj):
     if type(obj) is bytes:
         return obj.decode('utf-8')
-    return json.JSONEncoder.default(None, obj)
+    return json.JSONEncoder.default(encode, obj)
 
 
 if __name__ == '__main__':
