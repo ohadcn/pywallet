@@ -64,8 +64,10 @@ import hashlib
 import random
 try:
 	from urllib import urlopen
+	from urllib import URLError
 except:
 	from urllib.request import urlopen
+	from urllib.error import URLError
 import math
 import base64
 import collections
@@ -2983,17 +2985,17 @@ def importprivkey(db, sec, label, reserve, verbose=True):
 	return True
 
 def balance(address, retry = 3):
+
 	try:
-		page=urlopen("%s%s" % (balance_site, address))
-		query_result=page.read()
+		page = urlopen("%s%s" % (balance_site, address))
+		query_result = page.read()
 	except:
 		query_result = "error: no response"
-	#If the initial API call returned an error, use a secondary API
 	if str(query_result).startswith("error"):
 		try:
 			page = urlopen("%s%s" % (backup_balance_site, address))
 			query_result = json.loads(page.read())["balance"]
-		except HTTPError as e:
+		except URLError as e:
 			if retry > 0:
 				sleep(10)
 				return balance(address, retry - 1)
@@ -4150,6 +4152,8 @@ if __name__ == '__main__':
 		network = Network('Namecoin', 52, 13, 180, 'nc')
 	if options.litecoin:
 		network = Network('Litecoin', 48, 50, 0x36, 'ltc')
+		# didnt find one with the same API as blockchain.info
+		# so I'm using blockcypher
 		balance_site = 'https://error.error/'
 		backup_balance_site ='https://api.blockcypher.com/v1/ltc/main/addrs/'
 	elif options.testnet:
